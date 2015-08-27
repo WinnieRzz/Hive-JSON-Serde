@@ -13,6 +13,7 @@
 
 package org.openx.data.jsonserde;
 
+import java.nio.charset.CharacterCodingException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +28,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Writable;
 
 import org.apache.commons.logging.Log;
@@ -154,9 +156,19 @@ public class JsonSerDe implements SerDe {
      */
     @Override
     public Object deserialize(Writable w) throws SerDeException {
-        Text rowText = (Text) w;
+        Text rowText;
+        if(w instanceof BytesWritable) {
+          try {
+            BytesWritable bw = (BytesWritable) w;
+            rowText = new Text(Text.decode(bw.getBytes(), 0, bw.getLength()));
+          } catch (CharacterCodingException var8) {
+            throw new SerDeException(var8);
+          }
+        } else {
+          rowText = (Text) w;
+        }
         deserializedDataSize = rowText.getBytes().length;
-	
+
         // Try parsing row into JSON object
         Object jObj = null;
 
